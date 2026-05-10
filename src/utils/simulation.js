@@ -14,7 +14,7 @@ const MODERATE_LOAD_THRESHOLD = 70; // where system is under pressure
 const OVERLOAD_THRESHOLD = 100; // for vm demand going over usaable host capacity
 
 // Used when usage cannot be calculated normally because usable capacity is zero or negative.
-const INVALID_USAGE_VALUE = 999;
+const INVALID_USAGE_VALUE = 0;
 
 // Keeps a number within a minimum and maximum range.
 function clamp(value, min, max) {
@@ -37,15 +37,8 @@ function getWorkloadMultiplier(workload) {
 // Calculates usage as a percentage of usable host capacity.
 // Values above 100 mean the VM demand exceeds the available host capacity.
 function calculateUsagePercent(totalDemand, usableCapacity) {
-    if (usableCapacity > 0) {
-        return (totalDemand / usableCapacity) * 100;
-    }
-
-    if (totalDemand > 0) {
-        return INVALID_USAGE_VALUE;
-    }
-
-    return 0;
+    if (usableCapacity <= 0) return 0;
+    return (totalDemand / usableCapacity) * 100;
 }
 
 // Getting the overall system status from host capacity and resource pressure.
@@ -67,12 +60,15 @@ function calculatePerformanceScore({ usableCpu, usableMemory, cpuUsage, memoryUs
 
   let score = 100;
 
+  // If over mod. threshold, remove 15 points from performance score
   if (cpuUsage > MODERATE_LOAD_THRESHOLD) score -= 15;
   if (memoryUsage > MODERATE_LOAD_THRESHOLD) score -= 15;
 
+  // if cpu overloaded, remove 25 points.
   if (cpuUsage > OVERLOAD_THRESHOLD) score -= 25;
   if (memoryUsage > OVERLOAD_THRESHOLD) score -= 25;
 
+  // Every vm will also reduce the performance by a little depending on workload level
   vms.forEach((vm) => {
     if (vm.workload === "medium") score -= 2;
     if (vm.workload === "high") score -= 5;
@@ -84,33 +80,33 @@ function calculatePerformanceScore({ usableCpu, usableMemory, cpuUsage, memoryUs
 // Runs the VM resource allocation simulation.
 // Host CPU and VM CPU are have CPU cores, while memory is in MB.
 export function runSimulation(host, vms) {
-    const hostTotalCpu = toNumber(host.totalCpu);
+    const hostTotalCpuCores = toNumber(host.totalCpuCores);
     const hostTotalMemory = toNumber(host.totalMemory);
     const hostReservedCpu = toNumber(host.reservedCpu);
     const hostReservedMemory = toNumber(host.reservedMemory);
 
     // Usable resources are what remains after the host OS reserves resources for itself.
-    const usableCpu = hostTotalCpu - hostReservedCpu;
+    const usableCpu = hostTotalCpuCores - hostReservedCpu;
     const usableMemory = hostTotalMemory - hostReservedMemory;
 
-    let totalCpu = 0;
-    let totalMemory = 0;
+    let totalCpuDemand = 0;
+    let totalMemoryDemand = 0;
 
     // Each VM contributes to demand based on its requested resources and workload level.
     vms.forEach((vm) => {
         const multiplier = getWorkloadMultiplier(vm.workload);
 
-        totalCpu += toNumber(vm.cpu) * multiplier;
-        totalMemory += toNumber(vm.memory) * multiplier;
+        totalCpuDemand += toNumber(vm.cpu) * multiplier;
+        totalMemoryDemand += toNumber(vm.memory) * multiplier;
     });
 
     // Remaining resources can be negative, which means the host is overcommitted.
-    const remainingCpu = usableCpu - totalCpu;
-    const remainingMemory = usableMemory - totalMemory;
+    const remainingCpu = usableCpu - totalCpuDemand;
+    const remainingMemory = usableMemory - totalMemoryDemand;
 
     // Usage percentages compare total VM demand to the usable host resources.
-    const cpuUsage = calculateUsagePercent(totalCpu, usableCpu);
-    const memoryUsage = calculateUsagePercent(totalMemory, usableMemory);
+    const cpuUsage = calculateUsagePercent(totalCpuDemand, usableCpu);
+    const memoryUsage = calculateUsagePercent(totalMemoryDemand, usableMemory);
 
     const status = getSystemStatus({
         usableCpu,
@@ -129,21 +125,20 @@ export function runSimulation(host, vms) {
     });
 
     return {
-        hostTotalCpu,
+        hostTotalCpuCores,
         hostTotalMemory,
         hostReservedCpu,
         hostReservedMemory,
 
         usableCpu,
         usableMemory,
-        totalCpu,
-        totalMemory,
+        totalCpuDemand,
+        totalMemoryDemand,
         remainingCpu,
         remainingMemory,
 
         cpuUsage,
         memoryUsage,
-
         status,
         performanceScore,
     };

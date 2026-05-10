@@ -2,7 +2,7 @@
 // The right side dashboard that displays the total/remaing resoucre resutls
 
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { CpuCoreBar } from "../components/CpuCoreBar";
+import { CpuCoreBar } from "./CpuCoreBar";
 import { MemoryUsageBar } from "./MemoryUsageBar";
 
 export function ResultsPanel({ results }) {
@@ -16,24 +16,28 @@ export function ResultsPanel({ results }) {
 
       <CardContent className="space-y-5">
         <CpuCoreBar
-          total={results.hostTotalCpu}
+          total={results.hostTotalCpuCores}
           reserved={results.hostReservedCpu}
-          demand={results.totalCpu}
+          demand={results.totalCpuDemand}
         />
 
         <MemoryUsageBar
           total={results.hostTotalMemory}
           reserved={results.hostReservedMemory}
-          demand={results.totalMemory}
+          demand={results.totalMemoryDemand}
         />
 
         <div className="grid gap-3">
-          <ResultRow label="Usable CPU for VMs" value={`${results.usableCpu} cores`} />
-          <ResultRow label="VM CPU Demand" value={`${results.totalCpu.toFixed(1)} vCPU cores`} />
+          <ResultRow label="Usable CPU for VMs" value={`${results.usableCpu.toFixed(1)} cores`} />
+
+          <ResultRow label="VM CPU Demand" value={`${results.totalCpuDemand.toFixed(1)} vCPU cores`} />
+
           <ResultRow label="Remaining CPU Capacity" value={`${results.remainingCpu.toFixed(1)} cores`} />
           
           <ResultRow label="Usable Memory for VMs" value={`${results.usableMemory} MB`} />
-          <ResultRow label="VM Memory Demand" value={`${results.totalMemory.toFixed(0)} MB`} />
+
+          <ResultRow label="VM Memory Demand" value={`${results.totalMemoryDemand.toFixed(0)} MB`} />
+
           <ResultRow label="Remaining Memory Capacity" value={`${results.remainingMemory.toFixed(0)} MB`} />
         </div>
       </CardContent>

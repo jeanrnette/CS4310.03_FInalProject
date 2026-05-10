@@ -16,8 +16,8 @@ export function HostConfig({ host, updateHost }) {
           label="Total CPU Cores"
           type="number"
           min="0"
-          value={host.totalCpu}
-          onChange={(value) => updateHost("totalCpu", value)}
+          value={host.totalCpuCores}
+          onChange={(value) => updateHost("totalCpuCores", value)}
         />
 
         <InputField

@@ -12,7 +12,7 @@ export const scenarioPresets = [
             "This scenario represents a well-provisioned host where VM demand is comfortably within available CPU cores and memory, resulting in minimal contention.",
         // Host configuration: strong laptop / small workstation
         host: {
-            totalCpu: 8,
+            totalCpuCores: 8,
             totalMemory: 16000,
             reservedCpu: 1,
             reservedMemory: 2000,
@@ -32,7 +32,7 @@ export const scenarioPresets = [
             "This scenario models a lab or shared server environment where CPU cores and memory are actively shared across several VMs, increasing contention risk.",
         // Host configuration: typical shared system
         host: {
-            totalCpu: 8,
+            totalCpuCores: 8,
             totalMemory: 16000,
             reservedCpu: 1,
             reservedMemory: 3000,
@@ -40,7 +40,7 @@ export const scenarioPresets = [
         // VM configuration: moderate demand
         vms: [
             { id: 1, name: "VM-Database", cpu: 2, memory: 3000, workload: "medium" },
-            { id: 2, name: "VM-Web", cpu: 2, memory: 2000, workload: "medium" },
+            { id: 2, name: "VM-Web", cpu: 1, memory: 2000, workload: "medium" },
             { id: 3, name: "VM-Lab", cpu: 1, memory: 1500, workload: "low" },
         ],
     },
@@ -53,7 +53,7 @@ export const scenarioPresets = [
             "This scenario demonstrates overcommitment, where VMs request more CPU cores and memory than the host can provide, leading to contention and degraded performance.",
         // Host configuration: same hardware, but higher demand
         host: {
-            totalCpu: 8,
+            totalCpuCores: 8,
             totalMemory: 16000,
             reservedCpu: 2,
             reservedMemory: 4000,

@@ -35,8 +35,8 @@ export function buildInsightSections(results) {
     const hostItems = [];
 
     const cpuReservedPercent =
-    results.hostTotalCpu > 0
-        ? (results.hostReservedCpu / results.hostTotalCpu) * 100
+    results.hostTotalCpuCores > 0
+        ? (results.hostReservedCpu / results.hostTotalCpuCores) * 100
         : 0;
 
     const memoryReservedPercent =
@@ -82,7 +82,7 @@ export function buildInsightSections(results) {
         hostItems.push({
             title: "High Host Reservation",
             description:
-                "A large portion of CPU cores or memory is reserved for the host OS. This improves host stability but reduces the number of cores available for VMs.",
+                "A large portion of CPU cores or memory is reserved for the host OS. This improves host stability but reduces the resources available for VMs.",
         });
     } else if (cpuReservedPercent < 10 && memoryReservedPercent < 10) {
         hostItems.push({

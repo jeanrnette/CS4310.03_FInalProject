@@ -34,9 +34,9 @@ export default function App() {
   };
 
   const [host, setHost] = useState({
-    totalCpu: 100,
+    totalCpuCores: 8,
     totalMemory: 16000,
-    reservedCpu: 10,
+    reservedCpu: 1,
     reservedMemory: 2000,
   });
 
@@ -52,7 +52,7 @@ export default function App() {
   // TO update the host and its fields. Clears the active preset when the user is updating to their custom scenario.
   const updateHost = (field, value) => {
     const numericValue = Math.max(0, Number(value));
-    setHost({ ...host, [field]: Number(value) });
+    setHost({ ...host, [field]: numericValue });
     setActivePreset(null);
   };
 
@@ -74,6 +74,7 @@ export default function App() {
 
   const removeVM = (id) => {
     setVms(vms.filter((vm) => vm.id !== id));
+    setActivePreset(null);
   };
 
   // EDIT EDIJFSOFSDJFSDJFNSDLJFBHDLFJHWREBLHRESDBFRSLDJHFBRSDLJHCFBDSLHCVFBDSFLCJHDSBFDFJHBSDJHFBSDLFJHDSBFLJSDUHFBSLDKFJHSLFKJSDHFLKSDJHFLSDKJFH

@@ -11,21 +11,11 @@ export function InsightsPanel({ results }) {
       </CardHeader>
 
       <CardContent>
-        {results ? (
+        {results && results.insights?.length > 0 ? (
           <ul className="space-y-3 text-sm text-slate-700">
-            <Insight>
-              The host OS reserves CPU and memory before resources are made
-              available to virtual machines.
-            </Insight>
-            <Insight>
-              Higher VM workloads increase simulated scheduling pressure and
-              reduce overall efficiency.
-            </Insight>
-            <Insight>
-              {results.status === "Overloaded"
-                ? "The current VM workload exceeds available host resources."
-                : "The current VM workload is within the host’s available resource range."}
-            </Insight>
+            {results.insights.map((text, index) => (
+              <Insight key={index}>{text}</Insight>
+            ))}
           </ul>
         ) : (
           <p className="text-sm text-slate-500">

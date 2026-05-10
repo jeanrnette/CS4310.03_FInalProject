@@ -11,7 +11,6 @@ const WORKLOAD_MULTIPLIERS = {
 
 
 export function runSimulation(host, vms) {
-
     // What are the usable resources?
     // The Host has to reserve some CPU and memoery for itself so only what remains can be used by the virtual machines
     const usableCpu = host.totalCpu - host.reservedCpu;
@@ -30,6 +29,10 @@ export function runSimulation(host, vms) {
         totalMemory += Number(vm.memory) * multiplier;
     });
 
+    // Calculate the remaoog resurces. 
+    // if negative, the host is overallocated.
+    const remainingCpu = usableCpu - totalCpu;
+    const remainingMemory = usableMemory - totalMemory;
 
 
     // Compute the percantge of resource usage.
@@ -69,16 +72,76 @@ export function runSimulation(host, vms) {
     // Keep the score betwen 0 - 100
     performanceScore = Math.max(0, Math.min(100, performanceScore));
 
+    // To gnerate dynamic insgihts basedo nt he resutls of the simulation.
+    const insights = [];
+
+    if (host.reservedCpu > 0 || host.reservedMemory > 0) {
+        insights.push(
+        "The host OS reserves CPU and memory before resources are made available to virtual machines."
+        );
+    }
+
+    if (cpuUsage > 80) {
+        insights.push(
+        "CPU usage is high, which suggests increased scheduling contention between VMs."
+        );
+    }
+
+    if (memoryUsage > 80) {
+        insights.push(
+        "Memory usage is high, which may create memory pressure and reduce VM efficiency."
+        );
+    }
+
+    if (remainingCpu < 0) {
+        insights.push(
+        "CPU demand exceeds available host CPU, so VM performance may degrade."
+        );
+    }
+
+    if (remainingMemory < 0) {
+        insights.push(
+        "Memory demand exceeds available host memory, which may lead to paging, swapping, or allocation issues."
+        );
+    }
+
+    const hasHighWorkload = vms.some((vm) => vm.workload === "high");
+
+    if (hasHighWorkload) {
+        insights.push(
+        "At least one VM is running a high workload, increasing effective demand on the host OS."
+        );
+    }
+
+    if (status === "Efficient") {
+        insights.push(
+        "The current VM workload is within the host’s available resource range."
+        );
+    }
+
+    if (status === "Moderate Load") {
+        insights.push(
+        "The host is under moderate load; adding more VMs may cause performance overhead."
+        );
+    }
+
+    if (status === "Overloaded") {
+        insights.push(
+        "The host is overloaded because VM demand exceeds available resources."
+        );
+    }
+
     return {
         usableCpu,
         usableMemory,
         totalCpu,
         totalMemory,
-        remainingCpu: usableCpu - totalCpu,
-        remainingMemory: usableMemory - totalMemory,
+        remainingCpu,
+        remainingMemory,
         cpuUsage,
         memoryUsage,
         status,
         performanceScore,
+        insights,
     };
 }

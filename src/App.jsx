@@ -51,6 +51,7 @@ export default function App() {
 
   // TO update the host and its fields. Clears the active preset when the user is updating to their custom scenario.
   const updateHost = (field, value) => {
+    const numericValue = Math.max(0, Number(value));
     setHost({ ...host, [field]: Number(value) });
     setActivePreset(null);
   };

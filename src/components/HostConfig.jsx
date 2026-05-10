@@ -13,8 +13,9 @@ export function HostConfig({ host, updateHost }) {
 
       <CardContent className="grid gap-4 md:grid-cols-2">
         <InputField
-          label="Total CPU (%)"
+          label="Total CPU Cores"
           type="number"
+          min="0"
           value={host.totalCpu}
           onChange={(value) => updateHost("totalCpu", value)}
         />
@@ -27,8 +28,9 @@ export function HostConfig({ host, updateHost }) {
         />
 
         <InputField
-          label="Host Reserved CPU (%)"
+          label="Host Reserved CPU Cores"
           type="number"
+          min="0"
           value={host.reservedCpu}
           onChange={(value) => updateHost("reservedCpu", value)}
         />

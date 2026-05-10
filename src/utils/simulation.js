@@ -1,147 +1,150 @@
 // simulation.js
-// All the actual logic will be stored here
+// Contains the core simulation model for host OS and VM resource allocation.
 
-
-// these multipliers are to simulate how HEAVY a Vm is.
+// Workload multipliers estimate how much pressure a VM places on the host.
+// A VM with a "high" workload uses more effective CPU and memory than its base request.
 const WORKLOAD_MULTIPLIERS = {
-  low: 1,
-  medium: 1.5,
-  high: 2, // DOUBLE IT (give it to the next )
+    low: 1,
+    medium: 1.5,
+    high: 2,
 };
 
+// Thresholds
+const MODERATE_LOAD_THRESHOLD = 70; // where system is under pressure
+const OVERLOAD_THRESHOLD = 100; // for vm demand going over usaable host capacity
 
+// Used when usage cannot be calculated normally because usable capacity is zero or negative.
+const INVALID_USAGE_VALUE = 999;
+
+// Keeps a number within a minimum and maximum range.
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+// Safely converts input values into numbers.
+// Empty inputs or invalid values become 0 so the simulation does not crash.
+function toNumber(value) {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : 0;
+}
+
+// Returns the multiplier for a VM workload level.
+// Unknown workload values default to low pressure.
+function getWorkloadMultiplier(workload) {
+    return WORKLOAD_MULTIPLIERS[workload] || WORKLOAD_MULTIPLIERS.low;
+}
+
+// Calculates usage as a percentage of usable host capacity.
+// Values above 100 mean the VM demand exceeds the available host capacity.
+function calculateUsagePercent(totalDemand, usableCapacity) {
+    if (usableCapacity > 0) {
+        return (totalDemand / usableCapacity) * 100;
+    }
+
+    if (totalDemand > 0) {
+        return INVALID_USAGE_VALUE;
+    }
+
+    return 0;
+}
+
+// Getting the overall system status from host capacity and resource pressure.
+function getSystemStatus({ usableCpu, usableMemory, cpuUsage, memoryUsage, vmCount }) {
+    if (usableCpu <= 0 || usableMemory <= 0) return "Invalid Host Configuration";
+    if (vmCount === 0) return "No VMs Running";
+    if (cpuUsage > OVERLOAD_THRESHOLD || memoryUsage > OVERLOAD_THRESHOLD) return "Overloaded";
+    if (cpuUsage > MODERATE_LOAD_THRESHOLD || memoryUsage > MODERATE_LOAD_THRESHOLD) return "Moderate Load";
+
+    return "Efficient";
+}
+
+// Calculates a simplified performance score from 0 to 100.
+// It will drop as CPU pressure, memory pressure, and workload intensity increase.
+function calculatePerformanceScore({ usableCpu, usableMemory, cpuUsage, memoryUsage, vms }) {
+  if (usableCpu <= 0 || usableMemory <= 0) {
+    return 0;
+  }
+
+  let score = 100;
+
+  if (cpuUsage > MODERATE_LOAD_THRESHOLD) score -= 15;
+  if (memoryUsage > MODERATE_LOAD_THRESHOLD) score -= 15;
+
+  if (cpuUsage > OVERLOAD_THRESHOLD) score -= 25;
+  if (memoryUsage > OVERLOAD_THRESHOLD) score -= 25;
+
+  vms.forEach((vm) => {
+    if (vm.workload === "medium") score -= 2;
+    if (vm.workload === "high") score -= 5;
+  });
+
+  return clamp(score, 0, 100);
+}
+
+// Runs the VM resource allocation simulation.
+// Host CPU and VM CPU are have CPU cores, while memory is in MB.
 export function runSimulation(host, vms) {
-    // What are the usable resources?
-    // The Host has to reserve some CPU and memoery for itself so only what remains can be used by the virtual machines
-    const usableCpu = host.totalCpu - host.reservedCpu;
-    const usableMemory = host.totalMemory - host.reservedMemory;
+    const hostTotalCpu = toNumber(host.totalCpu);
+    const hostTotalMemory = toNumber(host.totalMemory);
+    const hostReservedCpu = toNumber(host.reservedCpu);
+    const hostReservedMemory = toNumber(host.reservedMemory);
 
+    // Usable resources are what remains after the host OS reserves resources for itself.
+    const usableCpu = hostTotalCpu - hostReservedCpu;
+    const usableMemory = hostTotalMemory - hostReservedMemory;
 
-
-    // Calcualte the total demand from the virtual machines
     let totalCpu = 0;
     let totalMemory = 0;
 
+    // Each VM contributes to demand based on its requested resources and workload level.
     vms.forEach((vm) => {
-        const multiplier = WORKLOAD_MULTIPLIERS[vm.workload] || 1;
+        const multiplier = getWorkloadMultiplier(vm.workload);
 
-        totalCpu += Number(vm.cpu) * multiplier;
-        totalMemory += Number(vm.memory) * multiplier;
+        totalCpu += toNumber(vm.cpu) * multiplier;
+        totalMemory += toNumber(vm.memory) * multiplier;
     });
 
-    // Calculate the remaoog resurces. 
-    // if negative, the host is overallocated.
+    // Remaining resources can be negative, which means the host is overcommitted.
     const remainingCpu = usableCpu - totalCpu;
     const remainingMemory = usableMemory - totalMemory;
 
+    // Usage percentages compare total VM demand to the usable host resources.
+    const cpuUsage = calculateUsagePercent(totalCpu, usableCpu);
+    const memoryUsage = calculateUsagePercent(totalMemory, usableMemory);
 
-    // Compute the percantge of resource usage.
-    // TO show how much of the avaiable resources are being used.
-    let cpuUsage = 0;
-    if (usableCpu > 0)  cpuUsage = (totalCpu / usableCpu) * 100;
-    let memoryUsage = 0;
-    if (usableMemory > 0) memoryUsage = (totalMemory / usableMemory) * 100;
-
-
-    
-    // Detmine the system status
-    // efficiently using sources, moderat, or is it overloaded and the system is demanding alot.
-    let status = "Efficient";
-    if (cpuUsage > 70 || memoryUsage > 70) status = "Moderate Load";
-    if (cpuUsage > 100 || memoryUsage > 100) status = "Overloaded";
-
-
-    // Computing the performac score (#/100)
-    // THis decreases as more resources are being used.
-    let performanceScore = 100;
-
-    // a lot of utilization
-    if (cpuUsage > 70) performanceScore -= 15;
-    if (memoryUsage > 70) performanceScore -= 15;
-
-    // OVERBOARD, we are going over capcacity
-    if (cpuUsage > 100) performanceScore -= 25;
-    if (memoryUsage > 100) performanceScore -=25;
-
-    // more penalties if the workload of a vm is set to higher
-    vms.forEach((vm) => {
-        if (vm.workload === "medium") performanceScore -= 2;
-        if (vm.workload === "high") performanceScore -= 5;
+    const status = getSystemStatus({
+        usableCpu,
+        usableMemory,
+        cpuUsage,
+        memoryUsage,
+        vmCount: vms.length,
     });
 
-    // Keep the score betwen 0 - 100
-    performanceScore = Math.max(0, Math.min(100, performanceScore));
-
-    // To gnerate dynamic insgihts basedo nt he resutls of the simulation.
-    const insights = [];
-
-    if (host.reservedCpu > 0 || host.reservedMemory > 0) {
-        insights.push(
-        "The host OS reserves CPU and memory before resources are made available to virtual machines."
-        );
-    }
-
-    if (cpuUsage > 80) {
-        insights.push(
-        "CPU usage is high, which suggests increased scheduling contention between VMs."
-        );
-    }
-
-    if (memoryUsage > 80) {
-        insights.push(
-        "Memory usage is high, which may create memory pressure and reduce VM efficiency."
-        );
-    }
-
-    if (remainingCpu < 0) {
-        insights.push(
-        "CPU demand exceeds available host CPU, so VM performance may degrade."
-        );
-    }
-
-    if (remainingMemory < 0) {
-        insights.push(
-        "Memory demand exceeds available host memory, which may lead to paging, swapping, or allocation issues."
-        );
-    }
-
-    const hasHighWorkload = vms.some((vm) => vm.workload === "high");
-
-    if (hasHighWorkload) {
-        insights.push(
-        "At least one VM is running a high workload, increasing effective demand on the host OS."
-        );
-    }
-
-    if (status === "Efficient") {
-        insights.push(
-        "The current VM workload is within the host’s available resource range."
-        );
-    }
-
-    if (status === "Moderate Load") {
-        insights.push(
-        "The host is under moderate load; adding more VMs may cause performance overhead."
-        );
-    }
-
-    if (status === "Overloaded") {
-        insights.push(
-        "The host is overloaded because VM demand exceeds available resources."
-        );
-    }
+    const performanceScore = calculatePerformanceScore({
+        usableCpu,
+        usableMemory,
+        cpuUsage,
+        memoryUsage,
+        vms,
+    });
 
     return {
+        hostTotalCpu,
+        hostTotalMemory,
+        hostReservedCpu,
+        hostReservedMemory,
+
         usableCpu,
         usableMemory,
         totalCpu,
         totalMemory,
         remainingCpu,
         remainingMemory,
+
         cpuUsage,
         memoryUsage,
+
         status,
         performanceScore,
-        insights,
     };
 }

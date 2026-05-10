@@ -26,7 +26,7 @@ export function VMCard({ vm, removeVM, updateVM }) {
         </div>
 
         <InputField
-          label="CPU (%)"
+          label="CPU Cores"
           type="number"
           value={vm.cpu}
           onChange={(value) => updateVM(vm.id, "cpu", value)}
